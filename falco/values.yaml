@@ -6,128 +6,6 @@
 # General deployment settings #
 ###############################
 falco:
-  image:
-    # -- The image pull policy.
-    pullPolicy: IfNotPresent
-  
-    # -- The image registry to pull from.
-    registry: docker.io
-    # -- The image repository to pull from
-    repository: falcosecurity/falco-no-driver
-    # -- The image tag to pull. Overrides the image tag whose default is the chart appVersion.
-    tag: ""
-
-  # -- Secrets containing credentials when pulling from private/secure registries.
-  imagePullSecrets: []
-  # -- Put here the new name if you want to override the release name used for Falco components.
-  nameOverride: ""
-  # -- Same as nameOverride but for the fullname.
-  fullnameOverride: ""
-  # -- Override the deployment namespace
-  namespaceOverride: ""
-
-  rbac:
-    # Create and use rbac resources when set to true. Needed to fetch k8s metadata from the api-server.
-    create: true
-
-  serviceAccount:
-    # -- Specifies whether a service account should be created.
-    create: true
-    # -- Annotations to add to the service account.
-    annotations: {}
-    # -- The name of the service account to use.
-    # If not set and create is true, a name is generated using the fullname template
-    name: ""
-
-  # -- Add additional pod annotations
-  podAnnotations: {}
-
-  # -- Add additional pod labels
-  podLabels: {}
-
-  # -- Set pod priorityClassName
-  podPriorityClassName:
-
-  # -- Set securityContext for the pods
-  # These security settings are overriden by the ones specified for the specific
-  # containers when there is overlap.
-  podSecurityContext: {}
-
-  # Note that `containerSecurityContext`:
-  #  - will not apply to init containers, if any;
-  #  - takes precedence over other automatic configurations (see below).
-  #
-  # Based on the `driver` configuration the auto generated settings are:
-  # 1) driver.enabled = false:
-  #    securityContext: {}
-  #
-  # 2) driver.enabled = true and (driver.kind = module || driver.kind = modern-bpf):
-  #    securityContext:
-  #     privileged: true
-  #
-  # 3) driver.enabled = true and driver.kind = ebpf:
-  #    securityContext:
-  #     privileged: true
-  #
-  # 4) driver.enabled = true and driver.kind = ebpf and driver.ebpf.leastPrivileged = true
-  #    securityContext:
-  #     capabilities:
-  #      add:
-  #      - BPF
-  #      - SYS_RESOURCE
-  #      - PERFMON
-  #      - SYS_PTRACE
-  #
-  # -- Set securityContext for the Falco container.For more info see the "falco.securityContext" helper in "pod-template.tpl"
-  containerSecurityContext: {}
-
-  scc:
-    # -- Create OpenShift's Security Context Constraint.
-    create: true
-
-  resources:
-    # -- Although resources needed are subjective on the actual workload we provide
-    # a sane defaults ones. If you have more questions or concerns, please refer
-    # to #falco slack channel for more info about it.
-    requests:
-      cpu: 100m
-      memory: 512Mi
-    # -- Maximum amount of resources that Falco container could get.
-    # If you are enabling more than one source in falco, than consider to increase
-    # the cpu limits.
-    limits:
-      cpu: 1000m
-      memory: 1024Mi
-  # -- Selectors used to deploy Falco on a given node/nodes.
-  nodeSelector: {}
-
-  # -- Affinity constraint for pods' scheduling.
-  affinity: {}
-
-  # -- Tolerations to allow Falco to run on Kubernetes masters.
-  tolerations:
-    - effect: NoSchedule
-      key: node-role.kubernetes.io/master
-    - effect: NoSchedule
-      key: node-role.kubernetes.io/control-plane
-
-  # -- Parameters used
-  healthChecks:
-    livenessProbe:
-      # -- Tells the kubelet that it should wait X seconds before performing the first probe.
-      initialDelaySeconds: 60
-      # -- Number of seconds after which the probe times out.
-      timeoutSeconds: 5
-      # -- Specifies that the kubelet should perform the check every x seconds.
-      periodSeconds: 15
-    readinessProbe:
-      # -- Tells the kubelet that it should wait X seconds before performing the first probe.
-      initialDelaySeconds: 30
-      # -- Number of seconds after which the probe times out.
-      timeoutSeconds: 5
-      # -- Specifies that the kubelet should perform the check every x seconds.
-      periodSeconds: 15
-
   # -- Attach the Falco process to a tty inside the container. Needed to flush Falco logs as soon as they are emitted.
   # Set it to "true" when you need the Falco logs to be immediately displayed.
   tty: true
@@ -136,55 +14,12 @@ falco:
   # Scenario requirements #
   #########################
 
-  # Sensors dislocation configuration (scenario requirement)
-  controller:
-    # Available options: deployment, daemonset.
-    kind: daemonset
-    # Annotations to add to the daemonset or deployment
-    annotations: {}
-    daemonset:
-      updateStrategy:
-        # You can also customize maxUnavailable or minReadySeconds if you
-        # need it
-        # -- Perform rolling updates by default in the DaemonSet agent
-        # ref: https://kubernetes.io/docs/tasks/manage-daemon/update-daemon-set/
-        type: RollingUpdate
-    deployment:
-      # -- Number of replicas when installing Falco using a deployment. Change it if you really know what you are doing.
-      # For more info check the section on Plugins in the README.md file.
-      replicas: 1
-
-  # -- Network services configuration (scenario requirement)
-  # Add here your services to be deployed together with Falco.
-  services:
-    # Example configuration for the "k8sauditlog" plugin
-    # - name: k8saudit-webhook
-    #   type: NodePort
-    #   ports:
-    #     - port: 9765 # See plugin open_params
-    #       nodePort: 30007
-    #       protocol: TCP
-
-  # File access configuration (scenario requirement)
-  mounts:
-    # -- A list of volumes you want to add to the Falco pods.
-    volumes: []
-    # -- A list of volumes you want to add to the Falco pods.
-    volumeMounts: []
-    # -- By default, `/proc` from the host is only mounted into the Falco pod when `driver.enabled` is set to `true`. This flag allows it to override this behaviour for edge cases where `/proc` is needed but syscall data source is not enabled at the same time (e.g. for specific plugins).
-    enforceProcMount: false
-
   # Driver settings (scenario requirement)
   driver:
-    # -- Set it to false if you want to deploy Falco without the drivers.
-    # Always set it to false when using Falco with plugins.
     enabled: true
     # -- Tell Falco which driver to use. Available options: module (kernel driver), ebpf (eBPF probe), modern-bpf (modern eBPF probe).
     kind: ebpf
-    # -- Configuration section for ebpf driver.
     ebpf:
-      # -- Path where the eBPF probe is located. It comes handy when the probe have been installed in the nodes using tools other than the init
-      # container deployed with the chart.
       path:
       # -- Needed to enable eBPF JIT at runtime for performance reasons.
       # Can be skipped if eBPF JIT is enabled from outside the container
@@ -214,21 +49,8 @@ falco:
         # -- Resources requests and limits for the Falco driver loader init container.
         resources: {}
         # -- Security context for the Falco driver loader init container. Overrides the default security context. If driver.kind == "module" you must at least set `privileged: true`.
-        securityContext: {}
-
-  # -- Gvisor configuration. Based on your system you need to set the appropriate values.
-  # Please, rembember to add pod tolerations and affinities in order to schedule the Falco pods in the gVisor enabled nodes.
-  gvisor:
-    # -- Set it to true if you want to deploy Falco with gVisor support.
-    enabled: false
-    # -- Runsc container runtime configuration. Falco needs to interact with it in order to intercept the activity of the sandboxed pods.
-    runsc:
-      # -- Absolute path of the `runsc` binary in the k8s nodes.
-      path: /home/containerd/usr/local/sbin
-      # -- Absolute path of the root directory of the `runsc` container runtime. It is of vital importance for Falco since `runsc` stores there the information of the workloads handled by it;
-      root: /run/containerd/runsc
-      # -- Absolute path of the `runsc` configuration file, used by Falco to set its configuration and make aware `gVisor` of its presence.
-      config: /run/containerd/runsc/config.toml
+        securityContext:
+          privileged: true
 
   # Collectors for data enrichment (scenario requirement)
   collectors:
@@ -324,7 +146,7 @@ falco:
   # -- For configuration values, see https://github.com/falcosecurity/charts/blob/master/falcosidekick/values.yaml
   falcosidekick:
     # -- Enable falcosidekick deployment.
-    enabled: false
+    enabled: true
     # -- Enable usage of full FQDN of falcosidekick service (useful when a Proxy is used).
     fullfqdn: false
     # -- Listen port. Default value: 2801
@@ -441,21 +263,21 @@ falco:
     # -- Plugins configuration. Add here all plugins and their configuration. Please
     # consult the plugins documentation for more info. Remember to add the plugins name in
     # "load_plugins: []" in order to load them in Falco.
-    plugins:
-      - name: k8saudit
-        library_path: libk8saudit.so
-        init_config:
-        #   maxEventSize: 262144
-        #   webhookMaxBatchSize: 12582912
-        #   sslCertificate: /etc/falco/falco.pem
-        open_params: "http://:9765/k8s-audit"
-      - name: cloudtrail
-        library_path: libcloudtrail.so
-        # see docs for init_config and open_params:
-        # https://github.com/falcosecurity/plugins/blob/master/plugins/cloudtrail/README.md
-      - name: json
-        library_path: libjson.so
-        init_config: ""
+    # plugins:
+    #   - name: k8saudit
+    #     library_path: libk8saudit.so
+    #     init_config:
+    #     #   maxEventSize: 262144
+    #     #   webhookMaxBatchSize: 12582912
+    #     #   sslCertificate: /etc/falco/falco.pem
+    #     open_params: "http://:9765/k8s-audit"
+    #   - name: cloudtrail
+    #     library_path: libcloudtrail.so
+    #     # see docs for init_config and open_params:
+    #     # https://github.com/falcosecurity/plugins/blob/master/plugins/cloudtrail/README.md
+    #   - name: json
+    #     library_path: libjson.so
+    #     init_config: ""
 
     # Setting this list to empty ensures that the above plugins are *not*
     # loaded and enabled by default. If you want to use the above plugins,
@@ -467,7 +289,7 @@ falco:
     # Please make sure to configure the falcoctl tool to download and install the very same plugins
     # you are loading here. You should add the references in the falcoctl.config.artifact.install.refs array
     # for each plugin you are loading.
-    load_plugins: []
+    # load_plugins: []
 
     # -- Watch config file and rules files for modification.
     # When a file is modified, Falco will propagate new config,
